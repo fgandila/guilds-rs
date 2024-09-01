@@ -56,14 +56,14 @@ rev = "8a7325b"
 path = "../guild-sc-config"
 
 [dependencies.multiversx-sc]
-version = "=0.50.5"
+version = "0.50.5"
 features = ["esdt-token-payment-legacy-decode"]
 
 [dependencies.multiversx-sc-modules]
-version = "=0.50.5"
+version = "0.50.5"
 
 [dev-dependencies]
 num-bigint = "0.4.2"
 
 [dev-dependencies.multiversx-sc-scenario]
-version = "=0.50.5"
+version = "0.50.5"

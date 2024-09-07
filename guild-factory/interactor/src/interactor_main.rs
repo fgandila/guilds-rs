@@ -11,12 +11,9 @@ use std::{
 };
 
 
-const GATEWAY: &str = sdk::blockchain::DEVNET_GATEWAY;
+const GATEWAY: &str = sdk::gateway::DEVNET_GATEWAY;
 const STATE_FILE: &str = "state.toml";
-const CONFIG_FILE: &str = "config.toml";
-const FARMING_TOKENID: &str = "test-23fwdc";
-const DIV_SAFETY_CONST: u64 = 1u64;
-const OWNER_ADDRESS: &str = "";
+
 
 #[tokio::main]
 async fn main() {
@@ -28,6 +25,7 @@ async fn main() {
     let mut interact = ContractInteract::new().await;
     match cmd.as_str() {
         "deploy" => interact.deploy().await,
+        "upgrade" => interact.upgrade().await,
         "deployConfigSc" => interact.deploy_config_sc().await,
         "callConfigFunction" => interact.call_config_function().await,
         "getConfigAddress" => interact.config_sc_address().await,
@@ -91,71 +89,6 @@ impl State {
         }
     }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-struct Config {
-    contract_address: Option<Bech32Address>
-}
-    
-impl Config {
-        // Deserializes config from file
-        pub fn load_config() -> Self {
-            if Path::new(STATE_FILE).exists() {
-                let mut file = std::fs::File::open(CONFIG_FILE).unwrap();
-                let mut content = String::new();
-                file.read_to_string(&mut content).unwrap();
-                toml::from_str(&content).unwrap()
-            } else {
-                Self::default()
-            }
-        }
-        
-            /// Sets the contract address
-        pub fn set_address(&mut self, address: Bech32Address) {
-            self.guildFactoryScAddress = Some(address);
-        }
-        
-        /// Returns the guild factory address
-        pub fn current_address(&self) -> &Bech32Address {
-            self.guildFactoryScAddress
-                    .as_ref()
-                    .expect("no known contract, deploy first")
-        }
-
-        /// Returns the proxy url
-        pub fn get_proxy(&self) -> String {
-            self.default_proxy
-                .as_ref()
-        }
-
-        /// Returns the api url
-        pub fn get_api(&self) -> String {
-            self.default_api
-                .as_ref()
-        }                
-
-
-        /// Returns the farming token
-        pub fn farming_token(&self) -> String {
-            self.farmingToken
-                .as_ref()
-                .expect("farming token not set")
-        }
-
-        /// Returns the division safety constant
-        pub fn division_safety_constant(&self) -> &BigUint {
-            self.division_safety_constant
-                .as_ref()
-                .expect("div safety constant not set, please set its value first")
-        }
-
-        /// Returns the farming token
-        pub fn perBlockRewardAmount(&self) -> &BigUint {
-            self.perBlockRewardAmount
-                .as_ref()
-            }
-    }
-
-
 struct ContractInteract {
     interactor: Interactor,
     wallet_address: Address,
@@ -191,6 +124,7 @@ impl ContractInteract {
             .interactor
             .tx()
             .from(&self.wallet_address)
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .init(guild_sc_source_address, farming_token_id, division_safety_constant, admins)
             .code(&self.contract_code)
@@ -205,8 +139,27 @@ impl ContractInteract {
         println!("new address: {new_address_bech32}");
     }
 
+    async fn upgrade(&mut self) {
+        let response = self
+            .interactor
+            .tx()
+            .to(self.state.current_address())
+            .from(&self.wallet_address)
+            .gas(30_000_000u64)
+            .typed(proxy::GuildFactoryProxy)
+            .upgrade()
+            .code(&self.contract_code)
+            .code_metadata(CodeMetadata::UPGRADEABLE)
+            .returns(ReturnsNewAddress)
+            .prepare_async()
+            .run()
+            .await;
+
+        println!("Result: {response:?}");
+    }
+
     async fn deploy_config_sc(&mut self) {
-        let config_init_args = PlaceholderInput;
+        let config_init_args = InitArgs::<StaticApi>::default();
         let config_sc_code = ManagedBuffer::new_from_bytes(&b""[..]);
 
         let response = self
@@ -214,6 +167,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .deploy_config_sc(config_init_args, config_sc_code)
             .returns(ReturnsResultUnmanaged)
@@ -233,6 +187,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .call_config_function(function_name, args)
             .returns(ReturnsResultUnmanaged)
@@ -264,6 +219,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .deploy_guild()
             .returns(ReturnsResultUnmanaged)
@@ -282,6 +238,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .resume_guild_endpoint(guild)
             .returns(ReturnsResultUnmanaged)
@@ -347,6 +304,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .request_rewards(amount)
             .returns(ReturnsResultUnmanaged)
@@ -370,6 +328,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .migrate_to_other_guild(guild, original_caller)
             .payment((TokenIdentifier::from(token_id.as_str()), token_nonce, token_amount))
@@ -391,6 +350,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .deposit_rewards_guild()
             .payment((TokenIdentifier::from(token_id.as_str()), token_nonce, token_amount))
@@ -408,6 +368,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .close_guild_no_rewards_remaining()
             .returns(ReturnsResultUnmanaged)
@@ -428,6 +389,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .deposit_rewards_admins()
             .payment((TokenIdentifier::from(token_id.as_str()), token_nonce, token_amount))
@@ -479,6 +441,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .add_admin(address)
             .returns(ReturnsResultUnmanaged)
@@ -497,6 +460,7 @@ impl ContractInteract {
             .tx()
             .from(&self.wallet_address)
             .to(self.state.current_address())
+            .gas(30_000_000u64)
             .typed(proxy::GuildFactoryProxy)
             .remove_admin(address)
             .returns(ReturnsResultUnmanaged)
@@ -522,25 +486,4 @@ impl ContractInteract {
         println!("Result: {result_value:?}");
     }
 
-    #[tokio::test]
-    async fn test_deploy(){
-
-        let guild_sc_source_address = bech32::decode("");
-        let farming_token_id = TokenIdentifier::from_esdt_bytes(&b""[..]);
-        let division_safety_constant = BigUint::<StaticApi>::from(0u128);
-        let admins = MultiValueVec::from(vec![bech32::decode("")]);
-
-        let mut interact = ContractInteract::new().await;
-        interact
-            .deploy(
-                &Bech32Address::from_bech32_string(config.current_address()),
-                farming_token_id,
-                division_safety_constant,
-                admins
-            )
-            .await;
-    
-    }
-    
-    
 }

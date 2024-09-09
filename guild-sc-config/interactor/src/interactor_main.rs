@@ -11,8 +11,20 @@ use std::{
 };
 
 
-const GATEWAY: &str = sdk::gateway::DEVNET_GATEWAY;
-const STATE_FILE: &str = "state.toml";
+pub const GATEWAY: &str = sdk::gateway::DEVNET_GATEWAY;
+pub const STATE_FILE: &str = "state.toml";
+pub const TOTAL_STAKING_TOKENS_MINTED: u64 = 1_000_000_000;
+pub const MAX_STAKED_TOKENS: u64 = 1_000_000_000;
+pub const USER_UNBOUND_EPOCHS: u64 = 1;
+pub const GUILD_MASTER_UNBOND_EPOCHS: u64 = 1;
+pub const MIN_STAKE_USER: u64 = 1_000;
+pub const MIN_STAKE_GUILD_MASTER: u64 = 500_000;
+pub static BASE_FARM_TOKEN_ID: &[u8] = b"UTKFARMN";
+pub static BASE_UNBOND_TOKEN_ID: &[u8] = b"UTKUNBNDN";
+pub static BASE_TOKEN_DISPLAY_NAME: &[u8] = b"stkUTK";
+pub const TOKENS_DECIMALS: u32 = 18;
+pub const SECONDS_PER_BLOCK: u64 = 6;
+pub const PER_BLOCK_REWARD_AMOUNT: u64 = 5_000;
 
 
 #[tokio::main]

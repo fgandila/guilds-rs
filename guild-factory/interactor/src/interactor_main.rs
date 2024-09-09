@@ -9,11 +9,26 @@ use std::{
     io::{Read, Write},
     path::Path,
 };
-
+use tokio::time::sleep;
 
 const GATEWAY: &str = sdk::gateway::DEVNET_GATEWAY;
 const STATE_FILE: &str = "state.toml";
+pub static REWARD_TOKEN_ID: &[u8] = b"UTK-abcdef"; // reward token ID
+pub static FARMING_TOKEN_ID: &[u8] = b"UTK-abcdef"; // farming token ID
+pub static FARM_TOKEN_ID: &[u8] = b"FARM1-abcdef";
+pub static OTHER_FARM_TOKEN_ID: &[u8] = b"FARM2-abcdef";
+pub static UNBOND_TOKEN_ID: &[u8] = b"UNBOND1-abcdef";
+pub static OTHER_UNBOND_TOKEN_ID: &[u8] = b"UNBOND2-abcdef";
+pub const DIVISION_SAFETY_CONSTANT: u64 = 1_000_000_000_000;
+pub const MIN_UNBOND_EPOCHS: u64 = 5;
+pub const MAX_APR: u64 = 2_500; // 25%
+pub const PER_BLOCK_REWARD_AMOUNT: u64 = 5_000;
+pub const TOTAL_REWARDS_AMOUNT: u64 = 1_000_000_000_000;
+pub const TOTAL_STAKING_TOKENS_MINTED: u64 = 1_000_000_000_000_000_000;
 
+pub const USER_TOTAL_RIDE_TOKENS: u64 = 5_000_000_000;
+pub static WITHDRAW_AMOUNT_TOO_HIGH: &str =
+    "Withdraw amount is higher than the remaining uncollected rewards!";
 
 #[tokio::main]
 async fn main() {
@@ -486,4 +501,58 @@ impl ContractInteract {
         println!("Result: {result_value:?}");
     }
 
+    #[tokio::test]
+    #[ignore = "run on demand"]
+    async fn deployConfigSCTest(){
+
+        let guild_sc_source_address = bech32::decode("");
+        let farming_token_id = TokenIdentifier::from_esdt_bytes(&b""[..]);
+        let division_safety_constant = BigUint::<StaticApi>::from(0u128);
+        let admins = MultiValueVec::from(vec![bech32::decode("")]);
+
+        let mut interact = ContractInteract::new().await;
+        interact
+            .deploy(
+                &Bech32Address::from_bech32_string(config.current_address()),
+                farming_token_id,
+                division_safety_constant,
+                admins
+            )
+            .await;
+    }
+
+    #[tokio::test]
+    async fn deployGuildTest(){
+        let mut interact = ContractInteract::new().await;
+        interact.deploy_guild().await
+
+    }
+
+    #[tokio::test]
+    async fn closeGuildTest(){
+        let mut interact = ContractInteract::new().await;
+  
+        let mut farm_setup = FarmStakingSetup::new(
+            guild_sc::contract_obj,
+            guild_sc_config::contract_obj,
+            guild_factory::contract_obj,
+        );
+
+        let AMOUNT_FOR_FARM = 50_000_000;
+
+        interact.stake_farm(AMOUNT_FOR_FARM).await;
+
+        interact.close_guild_no_rewards_remaining().await;
+
+
+    }
+
+    #[tokio::test]
+    async fn migrationTest(){
+
+        let mut interact = ContractInteract::new().await;
+
+        interact.migrate_to_other_guild().await;
+        
+    }
 }
